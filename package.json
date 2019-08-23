@@ -1,0 +1,17 @@
+{
+  "private": true,
+  "scripts": {
+    "postinstall": "spago install",
+    "build": "spago build && parcel build index.html",
+    "clean": "rm -rf .cache .spago dist node_modules output",
+    "dev": "concurrently 'spago build -w' 'parcel index.html'",
+    "test": "spago test"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^4.1.1",
+    "parcel": "^1.12.3",
+    "purescript": "^0.13.3",
+    "spago": "^0.9.0"
+  }
+}
