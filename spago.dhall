@@ -5,13 +5,17 @@ You can edit this file as you like.
 { name =
     "my-project"
 , dependencies =
-    [ "console"
+    [ "b64"
+    , "console"
     , "effect"
     , "halogen"
+    , "newtype"
+    , "profunctor-lenses"
     , "psci-support"
     , "remotedata"
     , "routing"
     , "routing-duplex"
+    , "simple-json"
     ]
 , packages =
     ./packages.dhall

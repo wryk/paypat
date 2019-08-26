@@ -4,8 +4,14 @@ import Prelude
 
 import App.Capability.Navigate (class Navigate, navigate)
 import App.Data.Route (Route(..), routeCodec)
+import App.Page.Home as PageHome
+import App.Page.Profile as PageProfile
+import App.Page.SenderReceipt as PageSenderReceipt
+import App.Page.RecipientReceipt as PageRecipientReceipt
+import Data.Const (Const)
 import Data.Either (hush)
 import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Symbol (SProxy(..))
 import Effect (Effect)
 import Effect.Aff.Class (class MonadAff)
 import Halogen (liftEffect)
@@ -32,8 +38,14 @@ type Input
 type Output
     = Void
 
+type OpaqueSlot = H.Slot (Const Void) Void
+
 type ChildSlots =
-    ()
+    ( home :: OpaqueSlot Unit
+    , profile :: OpaqueSlot Unit
+    , senderReceipt :: OpaqueSlot Unit
+    , recipientReceipt :: OpaqueSlot Unit
+    )
 
 component
     :: ∀ m
@@ -76,9 +88,13 @@ component = H.mkComponent
                 [ case route of
                     Just r -> case r of
                         Home ->
-                            HH.text "Home"
-                        Profile username ->
-                            HH.text $ username <> "'s profile"
+                            HH.slot (SProxy :: _ "home") unit PageHome.component unit absurd
+                        (Profile username) ->
+                            HH.slot (SProxy :: _ "profile") unit PageProfile.component username absurd
+                        (SenderReceipt payload) ->
+                            HH.slot (SProxy :: _ "senderReceipt") unit PageSenderReceipt.component payload absurd
+                        (RecipientReceipt payload) ->
+                            HH.slot (SProxy :: _ "recipientReceipt") unit PageRecipientReceipt.component payload absurd
                     Nothing ->
                         HH.text "404"
                 ]
