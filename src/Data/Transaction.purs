@@ -5,7 +5,7 @@ import Prelude
 import Data.Newtype (class Newtype, wrap, unwrap)
 import Data.Either (hush)
 import Data.Maybe (Maybe(..))
-import Data.String.Base64 (decode, encode)
+import Data.String.Base64 (decode, encodeUrl)
 import Simple.JSON (class ReadForeign, class WriteForeign, readJSON, writeJSON)
 
 newtype Username = Username String
@@ -34,7 +34,7 @@ type Transaction =
     }
 
 encodePayload :: Transaction -> Payload
-encodePayload = writeJSON >>> encode >>> wrap
+encodePayload = writeJSON >>> encodeUrl >>> wrap
 
 -- decodePayload :: Payload -> Maybe Transaction
 -- decodePayload payload = do
