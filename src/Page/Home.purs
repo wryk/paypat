@@ -5,9 +5,15 @@ import Prelude
 import App.Capability.Navigate (class Navigate, navigate)
 import App.Data.Route as Route
 import App.Data.Transaction (Username(..))
+import App.Form.Field as Field
+import App.Form.Validation as V
+import App.Utils (whenElement)
 import Data.Const (Const)
 import Data.Maybe (Maybe(..), maybe, isNothing)
+import Data.Newtype (class Newtype, unwrap)
 import Effect.Aff.Class (class MonadAff)
+import Effect.Console (logShow)
+import Formless as F
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -20,6 +26,7 @@ type State =
 data Action
     = Initialize
     | Demo
+    | HandleForm FormFields
 
 type Query a
     = Const Void
@@ -31,7 +38,8 @@ type Output
     = Void
 
 type ChildSlots =
-    ()
+  ( formless :: F.Slot ProfileForm FormQuery () FormFields Unit
+  )
 
 component
     :: ∀ m
@@ -58,6 +66,9 @@ component = H.mkComponent
             Initialize -> do
                 H.modify_ _ { username = Just $ Username "tixie" }
 
+            HandleForm fields -> do
+                H.liftEffect $ logShow fields
+
             Demo -> do
                 maybeUsername <- H.gets _.username
 
@@ -73,7 +84,7 @@ component = H.mkComponent
                 [ HH.h1_ [ HH.text "Home" ]
                 , HH.input
                     [ HP.type_ HP.InputText
-                    , HP.value $ maybe "" show state.username
+                    , HP.value $ maybe "" unwrap state.username
                     , HP.readOnly true
                     ]
                 , HH.button
@@ -82,5 +93,62 @@ component = H.mkComponent
                     , HE.onClick \_ -> Just Demo
                     ]
                     [ HH.text "Go to profile"
+                    ]
+                , HH.slot F._formless unit formComponent unit (Just <<< HandleForm)
+                ]
+
+type FormFields =
+    { username :: Username
+    }
+
+-- Form
+newtype ProfileForm r f = ProfileForm (r
+    ( username :: f V.FormError String Username
+    ))
+
+derive instance newtypeProfileForm :: Newtype (ProfileForm r f) _
+
+data FormQuery a
+  = SetLoginError Boolean a
+
+derive instance functorFormQuery :: Functor (FormQuery)
+
+formComponent :: ∀ m. MonadAff m => F.Component ProfileForm FormQuery () Unit FormFields m
+formComponent = F.component formInput $ F.defaultSpec
+    { render = renderLogin
+    , handleEvent = handleEvent
+    , handleQuery = handleQuery
+    }
+    where
+        formInput :: Unit -> F.Input ProfileForm (formError :: Boolean) m
+        formInput _ =
+            { validators: ProfileForm
+                { username: V.required >>> V.usernameFormat
+                }
+            , initialInputs: Nothing
+            , formError: false
+            }
+
+        handleEvent = F.raiseResult
+
+        handleQuery :: ∀ a. FormQuery a -> H.HalogenM _ _ _ _ _ (Maybe a)
+        handleQuery = case _ of
+            SetLoginError bool a -> do
+                H.modify_ _ { formError = bool }
+                pure (Just a)
+
+        proxies = F.mkSProxies (F.FormProxy :: _ ProfileForm)
+
+        renderLogin { form, formError } =
+            HH.form_
+                [ whenElement formError \_ ->
+                    HH.div_
+                        [ HH.text "Error" ]
+                    , HH.fieldset_
+                        [ Field.input proxies.username form
+                            [ HP.placeholder "Username"
+                            , HP.type_ HP.InputText
+                            ]
+                        , Field.submit "Go to profile"
                     ]
                 ]

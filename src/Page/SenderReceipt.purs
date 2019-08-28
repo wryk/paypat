@@ -5,6 +5,7 @@ import Prelude
 import App.Capability.Navigate (class Navigate)
 import App.Data.Route as Route
 import App.Data.Transaction (Payload, Transaction)
+import App.Utils (generateUrl)
 import Data.Const (Const)
 import Data.Maybe (Maybe(..))
 import Effect.Aff.Class (class MonadAff)
@@ -52,7 +53,7 @@ component = H.mkComponent
         initialState :: Input -> State
         initialState payload =
             { payload
-            , recipientReceiptUrl: print Route.routeCodec (Route.RecipientReceipt payload)
+            , recipientReceiptUrl: generateUrl $ Route.RecipientReceipt payload
             , transaction: Nothing
             }
 

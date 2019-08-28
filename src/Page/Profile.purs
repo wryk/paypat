@@ -7,6 +7,7 @@ import App.Data.Route as Route
 import App.Data.Transaction (Username(..), encodePayload)
 import Data.Const (Const)
 import Data.Maybe (Maybe(..), maybe)
+import Data.Newtype (unwrap)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
@@ -89,7 +90,7 @@ component = H.mkComponent
                 [ HH.h1_ [ HH.text $ "Profile : " <> (show state.username) ]
                 , HH.input
                     [ HP.type_ HP.InputText
-                    , HP.value $ maybe "" show state.sender
+                    , HP.value $ maybe "" unwrap state.sender
                     , HP.readOnly true
                     ]
                 , HH.input
