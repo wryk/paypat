@@ -3,26 +3,27 @@ module App.Page.Profile where
 import Prelude
 
 import App.Capability.Navigate (class Navigate, navigate)
+import App.Data.Model (Username)
 import App.Data.Route as Route
-import App.Data.Transaction (Username(..), encodePayload)
+import App.Form.Field as Field
+import App.Form.Validation as V
 import Data.Const (Const)
-import Data.Maybe (Maybe(..), maybe)
-import Data.Newtype (unwrap)
+import Data.Maybe (Maybe(..))
+import Data.Newtype (class Newtype, unwrap)
 import Effect.Aff.Class (class MonadAff)
+import Formless as F
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Web.Event.Event (Event, preventDefault)
 
 type State =
     { username :: Username
-    , sender :: Maybe Username
-    , amount :: Int
     }
 
 data Action
-    = Initialize
-    | Demo
+    = HandleForm FormFields
 
 type Query a
     = Const Void
@@ -34,7 +35,8 @@ type Output
     = Void
 
 type ChildSlots =
-    ()
+    ( formless :: F.Slot TransactionForm (Const Void) () FormFields Unit
+    )
 
 component
     :: ∀ m
@@ -46,7 +48,6 @@ component = H.mkComponent
     , render
     , eval: H.mkEval $ H.defaultEval
         { handleAction = handleAction
-        , initialize = Just Initialize
         }
     }
 
@@ -54,54 +55,85 @@ component = H.mkComponent
         initialState :: Input -> State
         initialState username =
             { username
-            , sender: Nothing
-            , amount: 0
             }
 
         handleAction :: Action -> H.HalogenM State Action ChildSlots Void m Unit
         handleAction = case _ of
-            Initialize -> do
-                H.modify_ _ { sender = Just $ Username "milia", amount = 5 }
+            HandleForm fields -> do
+                recipient <- H.gets _.username
 
-            Demo -> do
-                { username, amount } <- H.get
-
-                maybeSender <- H.gets _.sender
-
-                case maybeSender of
-                    Nothing ->
-                        pure unit
-                    Just sender -> do
-                        let
-                            transaction =
-                                { sender
-                                , recipient: username
-                                , amount
-                                , date: "2019-08-26T17:09:4+02:00"
-                                }
-
-                            payload = encodePayload transaction
-
-                        navigate $ Route.SenderReceipt payload
+                navigate $ Route.SenderReceipt
+                    { recipient
+                    , sender: fields.username
+                    , amount: fields.amount
+                    , date: "2019-08-26T17:09:4+02:00"
+                    }
 
         render :: State -> H.ComponentHTML Action ChildSlots m
         render state =
             HH.div_
-                [ HH.h1_ [ HH.text $ "Profile : " <> (show state.username) ]
-                , HH.input
-                    [ HP.type_ HP.InputText
-                    , HP.value $ maybe "" unwrap state.sender
-                    , HP.readOnly true
-                    ]
-                , HH.input
-                    [ HP.type_ HP.InputNumber
-                    , HP.value $ show state.amount
-                    , HP.readOnly true
-                    ]
-                , HH.button
-                    [ HP.type_ HP.ButtonButton
-                    , HE.onClick \_ -> Just Demo
-                    ]
-                    [ HH.text "Send headpats"
+                [ HH.h1_ [ HH.text $ "Profile :" <> (unwrap state.username) ]
+                , HH.slot F._formless unit formComponent unit (Just <<< HandleForm)
+                ]
+
+type FormFields =
+    { username :: Username
+    , amount :: Int
+    }
+
+-- Form
+newtype TransactionForm r f = TransactionForm (r
+    ( username :: f V.FormError String Username
+    , amount :: f V.FormError String Int
+    ))
+
+data FormAction
+    = SubmitPrevent Event
+
+derive instance newtypeTransactionForm :: Newtype (TransactionForm r f) _
+
+formComponent :: ∀ m. MonadAff m => F.Component TransactionForm (Const Void) () Unit FormFields m
+formComponent = F.component formInput $ F.defaultSpec
+    { render = renderForm
+    , handleAction = handleAction
+    , handleEvent = handleEvent
+    }
+    where
+        formInput :: Unit -> F.Input' TransactionForm m
+        formInput _ =
+            { validators: TransactionForm
+                { username: V.required >>> V.usernameFormat
+                , amount: V.required >>> V.int
+                }
+            , initialInputs: Nothing
+            }
+
+
+        proxies = F.mkSProxies (F.FormProxy :: _ TransactionForm)
+
+        renderForm { form } =
+            HH.form
+                [ HE.onSubmit \event -> Just $ F.injAction (SubmitPrevent event)
+                ]
+                [ HH.fieldset_
+                    [ Field.input proxies.username form
+                        [ HP.placeholder "Username"
+                        , HP.type_ HP.InputText
+                        ]
+                    , Field.input proxies.amount form
+                        [ HP.placeholder "Quantity"
+                        , HP.type_ HP.InputNumber
+                        ]
+                    , Field.submit "Send headpats"
                     ]
                 ]
+
+        handleEvent = F.raiseResult
+
+        handleAction = case _ of
+            SubmitPrevent event ->
+                -- H.liftEffect $ preventDefault event
+                eval F.submit
+
+            where
+                eval act = F.handleAction handleAction handleEvent act

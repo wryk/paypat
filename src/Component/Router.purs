@@ -91,10 +91,10 @@ component = H.mkComponent
                             HH.slot (SProxy :: _ "home") unit PageHome.component unit absurd
                         (Profile username) ->
                             HH.slot (SProxy :: _ "profile") unit PageProfile.component username absurd
-                        (SenderReceipt payload) ->
-                            HH.slot (SProxy :: _ "senderReceipt") unit PageSenderReceipt.component payload absurd
-                        (RecipientReceipt payload) ->
-                            HH.slot (SProxy :: _ "recipientReceipt") unit PageRecipientReceipt.component payload absurd
+                        (SenderReceipt transaction) ->
+                            HH.slot (SProxy :: _ "senderReceipt") unit PageSenderReceipt.component transaction absurd
+                        (RecipientReceipt transaction) ->
+                            HH.slot (SProxy :: _ "recipientReceipt") unit PageRecipientReceipt.component transaction absurd
                     Nothing ->
                         HH.text "404"
                 ]

@@ -3,31 +3,32 @@ module App.Page.SenderReceipt where
 import Prelude
 
 import App.Capability.Navigate (class Navigate)
+import App.Data.Model (Transaction)
 import App.Data.Route as Route
-import App.Data.Transaction (Payload, Transaction)
 import App.Utils (generateUrl)
 import Data.Const (Const)
 import Data.Maybe (Maybe(..))
+import Data.Newtype (unwrap)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Properties as HP
-import Routing.Duplex (print)
+import Web.HTML (window)
+import Web.HTML.Location (host, protocol)
+import Web.HTML.Window (location)
 
 type State =
-    { payload :: Payload
-    , recipientReceiptUrl :: String
-    , transaction :: Maybe Transaction
+    { transaction :: Transaction
+    , recipientReceiptUrl :: Maybe String
     }
 
 data Action
-    = Initialize
+    = HandleInput Input
 
 type Query a
     = Const Void
 
 type Input
-    = Payload
+    = Transaction
 
 type Output
     = Void
@@ -45,29 +46,38 @@ component = H.mkComponent
     , render
     , eval: H.mkEval $ H.defaultEval
         { handleAction = handleAction
-        , initialize = Just Initialize
+        , receive = Just <<< HandleInput
         }
     }
 
     where
         initialState :: Input -> State
-        initialState payload =
-            { payload
-            , recipientReceiptUrl: generateUrl $ Route.RecipientReceipt payload
-            , transaction: Nothing
+        initialState transaction = do
+            { transaction
+            , recipientReceiptUrl: Nothing
             }
 
         handleAction :: Action -> H.HalogenM State Action ChildSlots Void m Unit
         handleAction = case _ of
-            Initialize -> do
-                pure unit
+            HandleInput transaction -> do
+                location <- H.liftEffect $ window >>= location
+                protocol <- H.liftEffect $ protocol location
+                host <- H.liftEffect $ host location
+
+                let url = protocol <> host <> (generateUrl $ Route.RecipientReceipt transaction)
+                H.modify_ _ { recipientReceiptUrl = Just url }
 
         render :: State -> H.ComponentHTML Action ChildSlots m
-        render state =
+        render { transaction, recipientReceiptUrl } =
             HH.div_
-                [ HH.h1_ [ HH.text "Payload" ]
-                , HH.a
-                    [ HP.href state.recipientReceiptUrl
-                    ]
-                    [ HH.text "Give link to RECIPIENT plz" ]
+                [ HH.h1_ [ HH.text "Transaction" ]
+                , HH.p_ [ HH.text $ "You have successfully sent " <> (show transaction.amount) <> " headpats to " <> (unwrap transaction.recipient) ]
+                , case recipientReceiptUrl of
+                    Nothing ->
+                        HH.p_ [ HH.text "Generating link, please wait" ]
+                    Just url ->
+                        HH.div_
+                            [ HH.p_ [ HH.text "Share the following link with them !" ]
+                            , HH.pre_ [ HH.text url ]
+                            ]
                 ]

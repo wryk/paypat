@@ -3,16 +3,17 @@ module App.Page.RecipientReceipt where
 import Prelude
 
 import App.Capability.Navigate (class Navigate)
-import App.Data.Transaction (Payload)
+import App.Data.Model (Transaction)
 import Data.Const (Const)
 import Data.Maybe (Maybe(..))
+import Data.Newtype (unwrap)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 
 type State =
-    { payload :: Payload
+    { transaction :: Transaction
     }
 
 data Action
@@ -22,7 +23,7 @@ type Query a
     = Const Void
 
 type Input
-    = Payload
+    = Transaction
 
 type Output
     = Void
@@ -46,8 +47,8 @@ component = H.mkComponent
 
     where
         initialState :: Input -> State
-        initialState payload =
-            { payload
+        initialState transaction =
+            { transaction
             }
 
         handleAction :: Action -> H.HalogenM State Action ChildSlots Void m Unit
@@ -56,10 +57,11 @@ component = H.mkComponent
                 pure unit
 
         render :: State -> H.ComponentHTML Action ChildSlots m
-        render state =
+        render { transaction } =
             HH.div_
-                [ HH.h1_ [ HH.text "Payload" ]
-                , HH.p_ [ HH.text "RECIPIENT received X headpats from SENDER" ]
+                [ HH.h1_ [ HH.text "Transaction" ]
+                , HH.p_ [ HH.text $ (unwrap transaction.recipient) <>" received " <> (show transaction.amount) <> " headpats from " <> (unwrap transaction.sender) ]
+                , HH.p_ [ HH.text $ show transaction ]
                 , HH.button
                     [ HP.type_ HP.ButtonButton
                     ]

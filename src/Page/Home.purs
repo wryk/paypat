@@ -4,13 +4,12 @@ import Prelude
 
 import App.Capability.Navigate (class Navigate, navigate)
 import App.Data.Route as Route
-import App.Data.Transaction (Username(..))
+import App.Data.Model (Username)
 import App.Form.Field as Field
 import App.Form.Validation as V
-import App.Utils (whenElement)
 import Data.Const (Const)
-import Data.Maybe (Maybe(..), maybe, isNothing)
-import Data.Newtype (class Newtype, unwrap)
+import Data.Maybe (Maybe(..))
+import Data.Newtype (class Newtype)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Console (logShow)
 import Formless as F
@@ -18,6 +17,7 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Web.Event.Event (Event, preventDefault)
 
 type State =
     Unit
@@ -77,12 +77,16 @@ newtype ProfileForm r f = ProfileForm (r
     ( username :: f V.FormError String Username
     ))
 
+data FormAction
+    = SubmitPrevent Event
+
 derive instance newtypeProfileForm :: Newtype (ProfileForm r f) _
 
 formComponent :: ∀ m. MonadAff m => F.Component ProfileForm (Const Void) () Unit FormFields m
 formComponent = F.component formInput $ F.defaultSpec
     { render = renderForm
-    , handleEvent = F.raiseResult
+    , handleAction = handleAction
+    , handleEvent = handleEvent
     }
     where
         formInput :: Unit -> F.Input' ProfileForm m
@@ -97,7 +101,9 @@ formComponent = F.component formInput $ F.defaultSpec
         proxies = F.mkSProxies (F.FormProxy :: _ ProfileForm)
 
         renderForm { form } =
-            HH.form_
+            HH.form
+                [ HE.onSubmit \event -> Just $ F.injAction (SubmitPrevent event)
+                ]
                 [ HH.fieldset_
                     [ Field.input proxies.username form
                         [ HP.placeholder "Username"
@@ -106,3 +112,13 @@ formComponent = F.component formInput $ F.defaultSpec
                     , Field.submit "Go to profile"
                     ]
                 ]
+
+        handleEvent = F.raiseResult
+
+        handleAction = case _ of
+            SubmitPrevent event ->
+                -- H.liftEffect $ preventDefault event
+                eval F.submit
+
+            where
+                eval act = F.handleAction handleAction handleEvent act
