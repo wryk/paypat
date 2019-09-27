@@ -5,10 +5,12 @@ import Prelude
 import App.AppM (runAppM)
 import App.Component.Router as Router
 import App.Data.Route (Route, routeCodec)
-import App.Env (Env)
+import App.Env (Env, UserEnv)
 import Data.Maybe (Maybe(..))
 import Effect (Effect)
 import Effect.Aff (Aff, launchAff_)
+import Effect.Aff.Bus as Bus
+import Effect.Ref as Ref
 import Halogen (liftEffect)
 import Halogen as H
 import Halogen.Aff as HA
@@ -20,18 +22,28 @@ import Routing.PushState as RP
 main :: Effect Unit
 main = HA.runHalogenAff do
     history <- liftEffect RP.makeInterface
-    body <- HA.awaitBody
+    currentUser <- liftEffect $ Ref.new Nothing
+    userBus <- liftEffect Bus.make
 
     let
+        userEnv :: UserEnv
+        userEnv =
+            { currentUser
+            , userBus
+            }
+
         env :: Env
         env =
             { history
+            , userEnv
             }
 
-        rootComponent :: H.Component HH.HTML Router.Query Router.Input Router.Output Aff
+
+        rootComponent :: H.Component HH.HTML Router.Query {} Void Aff
         rootComponent = H.hoist (runAppM env) Router.component
 
-    halogenIO <- runUI rootComponent unit body
+    body <- HA.awaitBody
+    halogenIO <- runUI rootComponent {} body
 
     let
         navigation :: Maybe Route -> Route -> Effect Unit

@@ -5,7 +5,8 @@ You can edit this file as you like.
 { name =
     "my-project"
 , dependencies =
-    [ "b64"
+    [ "aff-bus"
+    , "b64"
     , "console"
     , "effect"
     , "halogen"

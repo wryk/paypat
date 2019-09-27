@@ -12,9 +12,9 @@ import Routing.Duplex.Generic.Syntax ((/))
 
 data Route
     = Home
+    | Login
     | Profile Username
-    | SenderReceipt Transaction
-    | RecipientReceipt Transaction
+    | Transaction Transaction
 
 derive instance genericRoute :: Generic Route _
 derive instance eqRoute :: Eq Route
@@ -26,9 +26,9 @@ instance showRoute :: Show Route where
 routeCodec :: RouteDuplex' Route
 routeCodec = root $ sum
     { "Home": noArgs
+    , "Login": "login" / noArgs
     , "Profile": username
-    , "SenderReceipt": "sreceipt" / transaction segment
-    , "RecipientReceipt": "rreceipt" / transaction segment
+    , "Transaction": "transaction" / transaction segment
     }
 
 username :: RouteDuplex' Username

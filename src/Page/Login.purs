@@ -1,16 +1,18 @@
-module App.Page.Profile where
+module App.Page.Login where
 
 import Prelude
 
 import App.Capability.Navigate (class Navigate, navigate)
-import App.Data.Model (Username)
+import App.Capability.Resource.User (class ManageUser, loginUser)
 import App.Data.Route as Route
+import App.Data.Model (Username)
 import App.Form.Field as Field
 import App.Form.Validation as V
 import Data.Const (Const)
 import Data.Maybe (Maybe(..))
-import Data.Newtype (class Newtype, unwrap)
+import Data.Newtype (class Newtype)
 import Effect.Aff.Class (class MonadAff)
+import Effect.Console (logShow)
 import Formless as F
 import Halogen as H
 import Halogen.HTML as HH
@@ -18,7 +20,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 
 type State =
-    { username :: Username
+    { redirect :: Boolean
     }
 
 data Action
@@ -27,23 +29,25 @@ data Action
 type Query a
     = Const Void
 
-type Input
-    = Username
+type Input =
+    { redirect :: Boolean
+    }
 
 type Output
     = Void
 
 type ChildSlots =
-    ( formless :: F.Slot TransactionForm (Const Void) () FormFields Unit
-    )
+  ( formless :: F.Slot LoginForm (Const Void) () FormFields Unit
+  )
 
 component
     :: ∀ m
     . MonadAff m
     => Navigate m
+    => ManageUser m
     => H.Component HH.HTML (Const Void) Input Output m
 component = H.mkComponent
-    { initialState
+    { initialState: identity
     , render
     , eval: H.mkEval $ H.defaultEval
         { handleAction = handleAction
@@ -51,60 +55,52 @@ component = H.mkComponent
     }
 
     where
-        initialState :: Input -> State
-        initialState username =
-            { username
-            }
-
         handleAction :: Action -> H.HalogenM State Action ChildSlots Void m Unit
         handleAction = case _ of
             HandleForm fields -> do
-                recipient <- H.gets _.username
+                loginResult <- loginUser fields.username
 
-                navigate $ Route.Transaction
-                    { recipient
-                    , sender: fields.username
-                    , amount: fields.amount
-                    , date: "2019-08-26T17:09:4+02:00"
-                    }
+                case loginResult of
+                    Nothing -> do
+                        pure unit
+                    Just username -> do
+                        redirect <- H.gets _.redirect
+                        when redirect (navigate Route.Home)
+
 
         render :: State -> H.ComponentHTML Action ChildSlots m
         render state =
             HH.div_
-                [ HH.h1_ [ HH.text $ "Profile : " <> (unwrap state.username) ]
+                [ HH.h1_ [ HH.text "Home" ]
                 , HH.slot F._formless unit formComponent unit (Just <<< HandleForm)
                 ]
 
 type FormFields =
     { username :: Username
-    , amount :: Int
     }
 
 -- Form
-newtype TransactionForm r f = TransactionForm (r
+newtype LoginForm r f = LoginForm (r
     ( username :: f V.FormError String Username
-    , amount :: f V.FormError String Int
     ))
 
-derive instance newtypeTransactionForm :: Newtype (TransactionForm r f) _
+derive instance newtypeLoginForm :: Newtype (LoginForm r f) _
 
-formComponent :: ∀ m. MonadAff m => F.Component TransactionForm (Const Void) () Unit FormFields m
+formComponent :: ∀ m. MonadAff m => F.Component LoginForm (Const Void) () Unit FormFields m
 formComponent = F.component formInput $ F.defaultSpec
     { render = renderForm
     , handleEvent = F.raiseResult
     }
     where
-        formInput :: Unit -> F.Input' TransactionForm m
+        formInput :: Unit -> F.Input' LoginForm m
         formInput _ =
-            { validators: TransactionForm
+            { validators: LoginForm
                 { username: V.required >>> V.usernameFormat
-                , amount: V.required >>> V.int
                 }
             , initialInputs: Nothing
             }
 
-
-        proxies = F.mkSProxies (F.FormProxy :: _ TransactionForm)
+        proxies = F.mkSProxies (F.FormProxy :: _ LoginForm)
 
         renderForm { form } =
             HH.form_
@@ -113,10 +109,6 @@ formComponent = F.component formInput $ F.defaultSpec
                         [ HP.placeholder "Username"
                         , HP.type_ HP.InputText
                         ]
-                    , Field.input proxies.amount form
-                        [ HP.placeholder "Quantity"
-                        , HP.type_ HP.InputNumber
-                        ]
-                    , Field.submit "Send headpats"
+                    , Field.submit "Login"
                     ]
                 ]

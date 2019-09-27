@@ -1,4 +1,4 @@
-module App.Page.RecipientReceipt where
+module App.Page.Transaction where
 
 import Prelude
 
