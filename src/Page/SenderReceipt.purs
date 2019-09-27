@@ -5,16 +5,13 @@ import Prelude
 import App.Capability.Navigate (class Navigate)
 import App.Data.Model (Transaction)
 import App.Data.Route as Route
-import App.Utils (generateUrl)
+import App.Utils (generateAbsoluteUrl)
 import Data.Const (Const)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
-import Web.HTML (window)
-import Web.HTML.Location (host, protocol)
-import Web.HTML.Window (location)
 
 type State =
     { transaction :: Transaction
@@ -22,7 +19,8 @@ type State =
     }
 
 data Action
-    = HandleInput Input
+    = Initialize
+    | HandleInput Input
 
 type Query a
     = Const Void
@@ -46,6 +44,7 @@ component = H.mkComponent
     , render
     , eval: H.mkEval $ H.defaultEval
         { handleAction = handleAction
+        , initialize = Just Initialize
         , receive = Just <<< HandleInput
         }
     }
@@ -59,13 +58,17 @@ component = H.mkComponent
 
         handleAction :: Action -> H.HalogenM State Action ChildSlots Void m Unit
         handleAction = case _ of
-            HandleInput transaction -> do
-                location <- H.liftEffect $ window >>= location
-                protocol <- H.liftEffect $ protocol location
-                host <- H.liftEffect $ host location
-
-                let url = protocol <> host <> (generateUrl $ Route.RecipientReceipt transaction)
+            Initialize -> do
+                transaction <- H.gets _.transaction
+                url <- H.liftEffect $ generateAbsoluteUrl $ Route.RecipientReceipt transaction
                 H.modify_ _ { recipientReceiptUrl = Just url }
+
+            HandleInput transaction -> do
+                oldTransaction <- H.gets _.transaction
+
+                when (oldTransaction /= transaction) do
+                    url <- H.liftEffect $ generateAbsoluteUrl $ Route.RecipientReceipt transaction
+                    H.modify_ _ { transaction = transaction, recipientReceiptUrl = Just url }
 
         render :: State -> H.ComponentHTML Action ChildSlots m
         render { transaction, recipientReceiptUrl } =

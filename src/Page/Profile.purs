@@ -16,7 +16,6 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Web.Event.Event (Event, preventDefault)
 
 type State =
     { username :: Username
@@ -87,16 +86,12 @@ newtype TransactionForm r f = TransactionForm (r
     , amount :: f V.FormError String Int
     ))
 
-data FormAction
-    = SubmitPrevent Event
-
 derive instance newtypeTransactionForm :: Newtype (TransactionForm r f) _
 
 formComponent :: ∀ m. MonadAff m => F.Component TransactionForm (Const Void) () Unit FormFields m
 formComponent = F.component formInput $ F.defaultSpec
     { render = renderForm
-    , handleAction = handleAction
-    , handleEvent = handleEvent
+    , handleEvent = F.raiseResult
     }
     where
         formInput :: Unit -> F.Input' TransactionForm m
@@ -112,9 +107,7 @@ formComponent = F.component formInput $ F.defaultSpec
         proxies = F.mkSProxies (F.FormProxy :: _ TransactionForm)
 
         renderForm { form } =
-            HH.form
-                [ HE.onSubmit \event -> Just $ F.injAction (SubmitPrevent event)
-                ]
+            HH.form_
                 [ HH.fieldset_
                     [ Field.input proxies.username form
                         [ HP.placeholder "Username"
@@ -127,13 +120,3 @@ formComponent = F.component formInput $ F.defaultSpec
                     , Field.submit "Send headpats"
                     ]
                 ]
-
-        handleEvent = F.raiseResult
-
-        handleAction = case _ of
-            SubmitPrevent event ->
-                -- H.liftEffect $ preventDefault event
-                eval F.submit
-
-            where
-                eval act = F.handleAction handleAction handleEvent act

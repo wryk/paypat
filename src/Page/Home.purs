@@ -17,7 +17,6 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Web.Event.Event (Event, preventDefault)
 
 type State =
     Unit
@@ -77,16 +76,12 @@ newtype ProfileForm r f = ProfileForm (r
     ( username :: f V.FormError String Username
     ))
 
-data FormAction
-    = SubmitPrevent Event
-
 derive instance newtypeProfileForm :: Newtype (ProfileForm r f) _
 
 formComponent :: ∀ m. MonadAff m => F.Component ProfileForm (Const Void) () Unit FormFields m
 formComponent = F.component formInput $ F.defaultSpec
     { render = renderForm
-    , handleAction = handleAction
-    , handleEvent = handleEvent
+    , handleEvent = F.raiseResult
     }
     where
         formInput :: Unit -> F.Input' ProfileForm m
@@ -97,13 +92,10 @@ formComponent = F.component formInput $ F.defaultSpec
             , initialInputs: Nothing
             }
 
-
         proxies = F.mkSProxies (F.FormProxy :: _ ProfileForm)
 
         renderForm { form } =
-            HH.form
-                [ HE.onSubmit \event -> Just $ F.injAction (SubmitPrevent event)
-                ]
+            HH.form_
                 [ HH.fieldset_
                     [ Field.input proxies.username form
                         [ HP.placeholder "Username"
@@ -112,13 +104,3 @@ formComponent = F.component formInput $ F.defaultSpec
                     , Field.submit "Go to profile"
                     ]
                 ]
-
-        handleEvent = F.raiseResult
-
-        handleAction = case _ of
-            SubmitPrevent event ->
-                -- H.liftEffect $ preventDefault event
-                eval F.submit
-
-            where
-                eval act = F.handleAction handleAction handleEvent act
