@@ -14,6 +14,7 @@ data Route
     = Home
     | Login
     | Profile Username
+    | ProfileLogin Username
     | Transaction Transaction
 
 derive instance genericRoute :: Generic Route _
@@ -28,6 +29,7 @@ routeCodec = root $ sum
     { "Home": noArgs
     , "Login": "login" / noArgs
     , "Profile": username
+    , "ProfileLogin": username / "login"
     , "Transaction": "transaction" / transaction segment
     }
 

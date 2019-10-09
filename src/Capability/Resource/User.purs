@@ -8,6 +8,8 @@ import Halogen (HalogenM, lift)
 
 class Monad m <= ManageUser m where
     loginUser :: Username -> m (Maybe Username)
+    logoutUser :: m Unit
 
 instance manageUserHalogenM :: ManageUser m => ManageUser (HalogenM st act slots msg m) where
     loginUser = lift <<< loginUser
+    logoutUser = lift logoutUser

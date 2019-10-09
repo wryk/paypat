@@ -2,9 +2,9 @@ module App.Form.Field where
 
 import Prelude
 
+import App.Component.HTML.Utils (maybeElement)
 import App.Form.Validation (errorToString)
 import App.Form.Validation as V
-import App.Utils (maybeElement)
 import DOM.HTML.Indexed (HTMLinput)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)

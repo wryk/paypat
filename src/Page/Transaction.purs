@@ -3,17 +3,17 @@ module App.Page.Transaction where
 import Prelude
 
 import App.Capability.Navigate (class Navigate)
-import App.Data.Model (Transaction)
+import App.Data.Model (Transaction, Username)
 import Data.Const (Const)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Properties as HP
 
 type State =
     { transaction :: Transaction
+    , currentUser :: Username
     }
 
 data Action
@@ -23,7 +23,7 @@ type Query a
     = Const Void
 
 type Input
-    = Transaction
+    = State
 
 type Output
     = Void
@@ -37,7 +37,7 @@ component
     => Navigate m
     => H.Component HH.HTML (Const Void) Input Output m
 component = H.mkComponent
-    { initialState
+    { initialState: identity
     , render
     , eval: H.mkEval $ H.defaultEval
         { handleAction = handleAction
@@ -46,25 +46,20 @@ component = H.mkComponent
     }
 
     where
-        initialState :: Input -> State
-        initialState transaction =
-            { transaction
-            }
-
         handleAction :: Action -> H.HalogenM State Action ChildSlots Void m Unit
         handleAction = case _ of
             Initialize -> do
                 pure unit
 
         render :: State -> H.ComponentHTML Action ChildSlots m
-        render { transaction } =
+        render { currentUser, transaction } =
             HH.div_
                 [ HH.h1_ [ HH.text "Transaction" ]
-                , HH.p_ [ HH.text $ (unwrap transaction.recipient) <>" received " <> (show transaction.amount) <> " headpats from " <> (unwrap transaction.sender) ]
-                , HH.p_ [ HH.text $ show transaction ]
-                , HH.button
-                    [ HP.type_ HP.ButtonButton
-                    ]
-                    [ HH.text "Give back headpats to SENDER !"
-                    ]
+                , HH.p_ [ HH.text message ]
                 ]
+
+            where
+                message
+                    | currentUser == transaction.recipient = "You received " <> (show transaction.amount) <> " headpats from " <> (unwrap transaction.sender)
+                    | currentUser == transaction.sender = "You sent "<> (show transaction.amount) <> " headpats to " <> (unwrap transaction.recipient)
+                    | otherwise = "Nothing to see here"

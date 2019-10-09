@@ -2,9 +2,11 @@ module App.AppM where
 
 import Prelude
 
-import App.Capability.Navigate (class Navigate)
+import App.Authentication.Storage (writeUsername, removeUsername)
+import App.Capability.Navigate (class Navigate, navigate)
 import App.Capability.Resource.User (class ManageUser)
 import App.Data.Route (routeCodec)
+import App.Data.Route as Route
 import App.Env (Env)
 import Control.Monad.Reader.Trans (class MonadAsk, ReaderT, asks, runReaderT)
 import Data.Maybe (Maybe(..))
@@ -42,9 +44,18 @@ instance navigateAppM :: Navigate AppM where
 instance manageUserAppM :: ManageUser AppM where
     loginUser username = do
         userEnv <- asks _.userEnv
+        liftEffect do
+            Ref.write (Just username) userEnv.currentUser
+            writeUsername username
 
-        liftEffect $ Ref.write (Just username) userEnv.currentUser
-        -- need to save user to localstorage too
         liftAff $ Bus.write (Just username) userEnv.userBus
-
         pure $ Just username
+
+    logoutUser = do
+        userEnv <- asks _.userEnv
+        liftEffect do
+            Ref.write Nothing userEnv.currentUser
+            removeUsername
+
+        liftAff $ Bus.write Nothing userEnv.userBus
+        navigate Route.Home

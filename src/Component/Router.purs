@@ -6,6 +6,7 @@ import App.Capability.Navigate (class Navigate, navigate)
 import App.Capability.Resource.User (class ManageUser)
 import App.Component.HOC.Connect (WithCurrentUser)
 import App.Component.HOC.Connect as Connect
+import App.Component.HTML.Header (header)
 import App.Component.Utils (OpaqueSlot)
 import App.Data.Model (Username)
 import App.Data.Route (Route(..), routeCodec)
@@ -99,24 +100,31 @@ component = Connect.component $ H.mkComponent
         authorize :: Maybe Username -> H.ComponentHTML Action ChildSlots m -> H.ComponentHTML Action ChildSlots m
         authorize mbProfile html = case mbProfile of
             Nothing ->
-                HH.slot (SProxy :: _ "login") unit PageLogin.component { redirect: false } absurd
+                HH.slot (SProxy :: _ "login") unit PageLogin.component { redirect: Nothing } absurd
             Just _ ->
                 html
 
         render :: State -> H.ComponentHTML Action ChildSlots m
-        render { route, currentUser } =
-            HH.main_
-                [ case route of
-                    Just r -> case r of
-                        Home ->
-                            HH.slot (SProxy :: _ "home") unit PageHome.component unit absurd
-                        Login ->
-                            HH.slot (SProxy :: _ "login") unit PageLogin.component { redirect: true } absurd
-                        (Profile username) ->
-                            HH.slot (SProxy :: _ "profile") unit PageProfile.component username absurd
-                        (Transaction transaction) ->
-                            HH.slot (SProxy :: _ "transaction") unit PageTransaction.component transaction absurd
-                                # authorize currentUser
-                    Nothing ->
-                        HH.text "404"
+        render { route, currentUser } = case route of
+            Just r ->
+                HH.main_
+                [ header currentUser r
+                , case r of
+                    Home ->
+                        HH.slot (SProxy :: _ "home") unit PageHome.component {} absurd
+                    Login ->
+                        HH.slot (SProxy :: _ "login") unit PageLogin.component { redirect: Just Home } absurd
+                    (Profile username) ->
+                        HH.slot (SProxy :: _ "profile") unit PageProfile.component { username } absurd
+                    (ProfileLogin username) ->
+                        HH.slot (SProxy :: _ "login") unit PageLogin.component { redirect: Just $ Profile username } absurd
+                    (Transaction transaction) ->
+                        case currentUser of
+                            Nothing ->
+                                HH.slot (SProxy :: _ "login") unit PageLogin.component { redirect: Nothing } absurd
+                            Just user ->
+                                HH.slot (SProxy :: _ "transaction") unit PageTransaction.component { transaction, currentUser: user } absurd
                 ]
+
+            Nothing ->
+                HH.text "404"

@@ -4,23 +4,22 @@ import Prelude
 
 import App.Capability.Navigate (class Navigate, navigate)
 import App.Capability.Resource.User (class ManageUser, loginUser)
-import App.Data.Route as Route
+import App.Data.Route (Route)
 import App.Data.Model (Username)
 import App.Form.Field as Field
 import App.Form.Validation as V
 import Data.Const (Const)
+import Data.Foldable (for_)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Effect.Aff.Class (class MonadAff)
-import Effect.Console (logShow)
 import Formless as F
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 
 type State =
-    { redirect :: Boolean
+    { redirect :: Maybe Route
     }
 
 data Action
@@ -29,9 +28,7 @@ data Action
 type Query a
     = Const Void
 
-type Input =
-    { redirect :: Boolean
-    }
+type Input = State
 
 type Output
     = Void
@@ -65,13 +62,13 @@ component = H.mkComponent
                         pure unit
                     Just username -> do
                         redirect <- H.gets _.redirect
-                        when redirect (navigate Route.Home)
+                        for_ redirect navigate
 
 
         render :: State -> H.ComponentHTML Action ChildSlots m
         render state =
             HH.div_
-                [ HH.h1_ [ HH.text "Home" ]
+                [ HH.h1_ [ HH.text "Login" ]
                 , HH.slot F._formless unit formComponent unit (Just <<< HandleForm)
                 ]
 

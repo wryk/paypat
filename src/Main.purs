@@ -3,6 +3,7 @@ module Main where
 import Prelude
 
 import App.AppM (runAppM)
+import App.Authentication.Storage (readUsername)
 import App.Component.Router as Router
 import App.Data.Route (Route, routeCodec)
 import App.Env (Env, UserEnv)
@@ -25,6 +26,10 @@ main = HA.runHalogenAff do
     currentUser <- liftEffect $ Ref.new Nothing
     userBus <- liftEffect Bus.make
 
+    liftEffect do
+        mbUsername <- readUsername
+        Ref.write mbUsername currentUser
+
     let
         userEnv :: UserEnv
         userEnv =
@@ -37,7 +42,6 @@ main = HA.runHalogenAff do
             { history
             , userEnv
             }
-
 
         rootComponent :: H.Component HH.HTML Router.Query {} Void Aff
         rootComponent = H.hoist (runAppM env) Router.component

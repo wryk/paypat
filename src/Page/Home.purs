@@ -15,7 +15,6 @@ import Effect.Console (logShow)
 import Formless as F
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 
 type State =
@@ -28,7 +27,7 @@ type Query a
     = Const Void
 
 type Input
-    = Unit
+    = {}
 
 type Output
     = Void
