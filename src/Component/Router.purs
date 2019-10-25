@@ -4,9 +4,9 @@ import Prelude
 
 import App.Capability.Navigate (class Navigate, navigate)
 import App.Capability.Resource.User (class ManageUser)
+import App.Component.Header as ComponentHeader
 import App.Component.HOC.Connect (WithCurrentUser)
 import App.Component.HOC.Connect as Connect
-import App.Component.HTML.Header (header)
 import App.Component.Utils (OpaqueSlot)
 import App.Data.Model (Username)
 import App.Data.Route (Route(..), routeCodec)
@@ -46,7 +46,8 @@ type Output
     = Void
 
 type ChildSlots =
-    ( home :: OpaqueSlot Unit
+    ( header :: OpaqueSlot Unit
+    , home :: OpaqueSlot Unit
     , login :: OpaqueSlot Unit
     , profile :: OpaqueSlot Unit
     , transaction :: OpaqueSlot Unit
@@ -108,7 +109,7 @@ component = Connect.component $ H.mkComponent
         render { route, currentUser } = case route of
             Just r ->
                 HH.main_
-                [ header currentUser r
+                [ HH.slot (SProxy :: _ "header") unit ComponentHeader.component { route: r } absurd
                 , case r of
                     Home ->
                         HH.slot (SProxy :: _ "home") unit PageHome.component {} absurd
